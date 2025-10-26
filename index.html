@@ -1,0 +1,241 @@
+<!doctype html>
+
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>NGI — Natural God Intelligence (Merged Prototype + RAG/Safety/Plugins/Research)</title>
+  <meta name="description" content="NGI merged UI: chat + RAG dashboard + Safety console + Plugin manager + Research workspace (client-side prototype)." />
+  <style>
+    :root{ --bg:#071024; --card:#0b1220; --muted:#9aa7bf; --accent:#6ee7b7; --accent2:#00d1ff; font-family:Inter, system-ui, -apple-system, Roboto, Arial; color-scheme:dark }
+    html,body{height:100%;margin:0;background:linear-gradient(180deg,#050816 0%, #071827 60%); color:#e6eef8}
+    .wrap{max-width:1300px;margin:14px auto;padding:12px;display:grid;grid-template-columns:300px 1fr 380px;gap:16px}
+    .card{background:var(--card);padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,0.03);box-shadow:0 8px 30px rgba(2,6,23,0.6)}
+    header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+    h1{margin:0;color:var(--accent);font-size:18px}
+    .small{font-size:13px;color:var(--muted)}
+    input,select,textarea,button{font-family:inherit}
+    input[type="text"],select,textarea{background:transparent;border:1px solid rgba(255,255,255,0.04);padding:8px;border-radius:8px;color:inherit;outline:none}
+    textarea{min-height:80px;resize:vertical}
+    .btn{background:var(--accent);color:#012;border:none;padding:8px 12px;border-radius:8px;cursor:pointer}
+    .btn-ghost{background:transparent;border:1px solid rgba(255,255,255,0.04);color:var(--muted)}
+    .messages{height:520px;overflow:auto;padding:12px;border-radius:8px;background:linear-gradient(180deg, rgba(255,255,255,0.01), transparent)}
+    .msg{margin-bottom:12px}
+    .who{font-weight:700;color:var(--accent2);margin-bottom:6px}
+    .meta{font-size:12px;color:var(--muted);margin-top:6px}
+    .panel-title{font-size:14px;margin-bottom:8px;color:var(--accent)}
+    .simBox{background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent); padding:10px; border-radius:8px; font-family:monospace; max-height:220px; overflow:auto}
+    .row{display:flex;gap:8px;align-items:center}
+    .flex{display:flex;gap:8px}
+    .small-muted{font-size:12px;color:rgba(255,255,255,0.6)}
+    .badge{display:inline-block;padding:4px 8px;border-radius:999px;background:rgba(255,255,255,0.03);font-size:12px}
+    .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    footer{grid-column:1/-1;text-align:center;font-size:12px;color:var(--muted);margin-top:8px}
+    .section{margin-bottom:12px}
+    details{background:rgba(255,255,255,0.02);padding:8px;border-radius:8px}
+    @media (max-width:1000px){ .wrap{grid-template-columns:1fr; padding:12px} .messages{height:360px} }
+  </style>
+</head>
+<body>
+  <div style="max-width:1300px;margin:10px auto;padding:0 12px">
+    <header>
+      <div>
+        <h1>NGI — Natural God Intelligence</h1>
+        <div class="small">Merged prototype for www.twofuture.world & www.bitcoinayt.world — client-side demo</div>
+      </div>
+      <div class="small">Session: <span id="sessionId" class="badge">ngi-sess-0001</span></div>
+    </header>
+  </div>  <div class="wrap">
+    <!-- LEFT: Controls, RAG dashboard, Safety console summary -->
+    <aside class="card">
+      <div class="panel-title">NGI Controls</div>
+      <div class="section">
+        <div class="small">Model</div>
+        <div class="row" style="margin-top:8px">
+          <select id="modelSelect">
+            <option value="ngi-local">NGI-Local (sim)</option>
+            <option value="openai">OpenAI / ChatGPT</option>
+            <option value="anthropic">Anthropic / Claude</option>
+            <option value="llama">LLaMA / Self-hosted</option>
+            <option value="custom">Custom Backend</option>
+          </select>
+          <button class="btn-ghost" id="connectBtn">Ping</button>
+        </div>
+      </div><div class="section">
+    <div class="small">System prompt</div>
+    <textarea id="systemPrompt">You are NGI — helpful, safe, concise. Prioritize user privacy and cite sources.</textarea>
+    <div style="display:flex;gap:8px;margin-top:8px"><button class="btn" id="applySys">Apply</button><button class="btn-ghost" id="saveSys">Save</button></div>
+  </div>
+
+  <div class="section">
+    <div class="panel-title">RAG Dashboard (quick)</div>
+    <div class="small-muted">Upload documents to index; preview top-k retrieval results and sources.</div>
+    <div style="margin-top:8px" class="row">
+      <input type="file" id="fileUpload" accept=".txt,.pdf,.md,.json" />
+      <button class="btn-ghost" id="indexFile">Index</button>
+    </div>
+    <div style="margin-top:8px" class="small-muted">Indexed documents: <span id="docCount">0</span></div>
+    <details style="margin-top:8px"><summary class="small">Top-k preview</summary><div id="topKPreview" class="simBox">—</div></details>
+  </div>
+
+  <div class="section">
+    <div class="panel-title">Safety Console (summary)</div>
+    <div class="small-muted">Moderation pre-check, flagged items, human queue.</div>
+    <div style="margin-top:8px" class="row"><button class="btn-ghost" id="viewFlags">View flags</button><button class="btn-ghost" id="escalate">Escalate</button></div>
+  </div>
+
+  <div class="section">
+    <div class="panel-title">Memory</div>
+    <div class="row"><button class="btn" id="viewMemory">View</button><button class="btn-ghost" id="exportMemory">Export</button></div>
+  </div>
+
+  <div class="section">
+    <div class="panel-title">Quick Links</div>
+    <div class="small-muted">For your websites: <a href="https://www.twofuture.world" target="_blank">twofuture.world</a>, <a href="https://www.bitcoinayt.world" target="_blank">bitcoinayt.world</a></div>
+  </div>
+</aside>
+
+<!-- CENTER: Chat area + Plugin manager + Regenerate -->
+<main class="card" style="display:flex;flex-direction:column">
+  <div style="display:flex;justify-content:space-between;align-items:center">
+    <div class="panel-title">NGI Chat</div>
+    <div class="small-muted">Token count: <span id="tokenCount">0</span></div>
+  </div>
+
+  <div class="messages" id="messages" role="log" aria-live="polite"></div>
+
+  <div style="margin-top:10px">
+    <div class="small">User input — Enter to send, Shift+Enter for newline.</div>
+    <textarea id="userInput" placeholder="Ask NGI a question..."></textarea>
+  </div>
+
+  <div style="display:flex;gap:8px;margin-top:8px;align-items:center">
+    <button class="btn" id="sendBtn">Send</button>
+    <button class="btn-ghost" id="streamBtn">Stream (sim)</button>
+    <button class="btn-ghost" id="regenerateBtn">Regenerate</button>
+    <div style="margin-left:auto" class="small-muted">Style:</div>
+    <select id="styleSelect" style="width:140px"><option>Concise</option><option>Detailed</option><option>Creative</option><option>Technical</option></select>
+  </div>
+
+  <div style="display:flex;gap:8px;margin-top:10px;align-items:center">
+    <div style="flex:1">
+      <div class="panel-title">Plugin Manager</div>
+      <div class="small-muted">Activate or configure external tool plugins (web-browse, code-runner, calculator, calendar).</div>
+      <div style="display:flex;gap:8px;margin-top:8px"><button class="btn-ghost" id="pluginBrowse">Web Browse</button><button class="btn-ghost" id="pluginCode">Code Runner</button><button class="btn-ghost" id="pluginCalc">Calculator</button></div>
+    </div>
+    <div style="width:320px">
+      <div class="panel-title">Export</div>
+      <div class="row"><button class="btn-ghost" id="exportChat">Export Chat</button><button class="btn-ghost" id="clearChat">Clear</button></div>
+    </div>
+  </div>
+
+</main>
+
+<!-- RIGHT: Research workspace, Diagnostics, Safety logs -->
+<aside class="card">
+  <div class="panel-title">Research Workspace (Brain Reader Sandbox)</div>
+  <div class="small-muted">RESEARCH ONLY: sensor uploads, waveform viewer, consent & IRB logs. Do not use as medical device UI.</div>
+  <div style="margin-top:8px" class="section">
+    <div class="small">Sensor data (upload)</div>
+    <input type="file" id="sensorUpload" accept=".edf,.csv,.txt" />
+    <div style="margin-top:8px" class="row"><button class="btn-ghost" id="processSensor">Process (sim)</button><button class="btn-ghost" id="viewSensor">View</button></div>
+  </div>
+
+  <div class="section">
+    <div class="panel-title">Diagnostics & Logs</div>
+    <div id="rawBox" class="simBox">—</div>
+    <div style="margin-top:8px" class="small-muted">Model comparators: run NGI vs. reference models for A/B.</div>
+    <div style="margin-top:8px" class="grid-2"><div id="aOut" class="simBox">NGI-local (sim)</div><div id="bOut" class="simBox">Reference</div></div>
+  </div>
+
+  <div class="section">
+    <div class="panel-title">Safety & Moderation Log</div>
+    <div id="logBox" class="simBox" style="height:120px">—</div>
+    <div style="margin-top:8px" class="row"><button class="btn-ghost" id="reviewFlag">Review Flag</button><button class="btn-ghost" id="clearFlags">Clear</button></div>
+  </div>
+
+  <div class="section">
+    <div class="panel-title">Quick Ops</div>
+    <div class="small-muted">Health checks & backend ping</div>
+    <div style="margin-top:8px" class="row"><button class="btn" id="pingAll">Ping APIs</button><button class="btn-ghost" id="openMetrics">Metrics</button></div>
+  </div>
+</aside>
+
+<footer class="small">Prototype UI only — wire server endpoints to enable real NGI features. Designed for twofuture.world & bitcoinayt.world (HTML-only hosting friendly). Keep brain-reading features research-only until validated.</footer>
+
+  </div><script>
+/* Merged NGI prototype JS: lightweight simulation + hooks for real endpoints
+   - This file is intended to be drop-in HTML you can host on static sites
+   - For real features, implement server endpoints described below
+*/
+
+function uuid(){ return 'ngi-'+Math.random().toString(36).slice(2,9); }
+document.getElementById('sessionId').textContent = uuid();
+const messagesEl = document.getElementById('messages');
+const inputEl = document.getElementById('userInput');
+const sendBtn = document.getElementById('sendBtn');
+const streamBtn = document.getElementById('streamBtn');
+const modelSelect = document.getElementById('modelSelect');
+const systemPromptEl = document.getElementById('systemPrompt');
+const tokenCountEl = document.getElementById('tokenCount');
+const rawBox = document.getElementById('rawBox');
+const logBox = document.getElementById('logBox');
+let sessionMemory = []; let docCount = 0;
+
+function appendMessage(who, text, meta=''){ const el = document.createElement('div'); el.className='msg'; el.innerHTML = '<div class="who">'+who+'</div><div>'+escapeHtml(text)+'</div>' + (meta? '<div class="meta">'+escapeHtml(meta)+'</div>':''); messagesEl.appendChild(el); messagesEl.scrollTop = messagesEl.scrollHeight; }
+function appendLog(s){ logBox.textContent = '['+new Date().toLocaleTimeString()+'] '+s+'\n'+logBox.textContent; }
+function escapeHtml(s){ return (''+s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>'); }
+function countTokensApprox(s){ return Math.max(1, Math.floor(s.length/4)); }
+
+async function callLocalModel(payload){ appendLog('Local model: '+payload.input.slice(0,60)); await new Promise(r=>setTimeout(r, 350+Math.random()*500)); let out='NGI (sim): '+payload.input; if(payload.style==='Concise') out = 'NGI: '+payload.input.split('.')[0]; if(payload.style==='Detailed') out = 'NGI detailed: '+payload.input+' — detailed (sim)'; return out; }
+
+sendBtn.addEventListener('click', async ()=>{ const text = inputEl.value.trim(); if(!text) return; appendMessage('You', text, new Date().toLocaleTimeString()); inputEl.value=''; tokenCountEl.textContent = countTokensApprox(text); // safety quick-check
+ if(/bomb|kill|terror/i.test(text)){ appendMessage('NGI','Request blocked by safety filter.'); appendLog('Safety blocked'); return; }
+ sessionMemory.push({role:'user',text,ts:Date.now()}); appendLog('Saved to memory'); const payload={input:text,system:systemPromptEl.value,style:document.getElementById('styleSelect').value,session_id:document.getElementById('sessionId').textContent}; if(modelSelect.value==='ngi-local'){ appendMessage('NGI','…thinking (sim)'); const r = await callLocalModel(payload); appendMessage('NGI', r, new Date().toLocaleTimeString()); rawBox.textContent = JSON.stringify({text,ts:Date.now()},null,2); document.getElementById('aOut').textContent = r.slice(0,400); } else { appendMessage('NGI','Sending to backend: '+modelSelect.value); try { const res = await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}); if(!res.ok) throw new Error('Network '+res.status); const d = await res.json(); appendMessage('NGI', d.text || '[no text]', new Date().toLocaleTimeString()); if(d.tokens) tokenCountEl.textContent = d.tokens; if(d.sources) document.getElementById('topKPreview').textContent = d.sources.map(s=>s.title||s.id).join('\n'); appendLog('Backend reply'); } catch(err){ appendMessage('NGI','[backend unavailable — simulated reply]'); const r = await callLocalModel(payload); appendMessage('NGI', r); appendLog('Backend failed: '+err.message); } }
+});
+
+streamBtn.addEventListener('click', async ()=>{ const text = inputEl.value.trim(); if(!text) return; inputEl.value=''; appendMessage('You', text); appendLog('Stream sim'); const container = document.createElement('div'); container.className='msg'; container.innerHTML = '<div class="who">NGI (stream)</div><div id="streamText">'; messagesEl.appendChild(container); messagesEl.scrollTop = messagesEl.scrollHeight; const chunks=['Processing…','Retrieving context…','Composing answer…','Finalizing result.']; for(let i=0;i<chunks.length;i++){ await new Promise(r=>setTimeout(r,300+Math.random()*400)); container.querySelector('#streamText').innerHTML = escapeHtml(chunks.slice(0,i+1).join(' ')); messagesEl.scrollTop = messagesEl.scrollHeight; } const final='NGI (stream final): '+text+' — (simulated).'; container.querySelector('#streamText').innerHTML = escapeHtml(final); appendLog('Stream finished'); });
+
+// File indexing simulation
+document.getElementById('indexFile').addEventListener('click', ()=>{ const f = document.getElementById('fileUpload').files[0]; if(!f){ alert('Choose a file'); return; } docCount++; document.getElementById('docCount').textContent = docCount; appendLog('Indexed: '+f.name); document.getElementById('topKPreview').textContent = 'TopK (sim) for '+f.name+"\n- DocID: " + docCount; appendMessage('NGI','Indexed file (sim): '+f.name); });
+
+// Sensor processing simulation
+document.getElementById('processSensor').addEventListener('click', ()=>{ const f = document.getElementById('sensorUpload').files[0]; if(!f){ alert('Select sensor file'); return; } appendLog('Processing sensor file (sim): '+f.name); alert('Sensor processed (simulation). Keep this workspace research-only.'); });
+
+// Quick ops
+document.getElementById('pingAll').addEventListener('click', ()=>{ appendLog('Pinging APIs (sim)'); alert('Ping simulated. Implement /api/ping on server to respond.'); });
+
+document.getElementById('exportChat').addEventListener('click', ()=>{ const data={session:document.getElementById('sessionId').textContent,memory:sessionMemory,transcript:messagesEl.innerText}; const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='ngi_chat_export.json'; a.click(); URL.revokeObjectURL(a.href); appendLog('Chat exported'); });
+
+document.getElementById('clearChat').addEventListener('click', ()=>{ if(confirm('Clear chat?')) messagesEl.innerHTML=''; });
+
+document.getElementById('viewMemory').addEventListener('click', ()=>{ const w=window.open('','_blank'); w.document.title='NGI Memory'; const pre=w.document.createElement('pre'); pre.textContent=JSON.stringify(sessionMemory,null,2); w.document.body.appendChild(pre); });
+
+// Small helpers for plugins (sim)
+document.getElementById('pluginBrowse').addEventListener('click', ()=>{ alert('Web Browse plugin: simulated. Implement /api/tool/execute with scope:web_browse to enable.'); });
+document.getElementById('pluginCode').addEventListener('click', ()=>{ alert('Code Runner plugin: simulated. Implement secure sandboxed executor on the server.'); });
+document.getElementById('pluginCalc').addEventListener('click', ()=>{ const q = prompt('Enter expression to evaluate (sim):'); if(!q) return; try{ const v = Function('return ('+q+')')(); appendMessage('NGI (calc)', String(v)); }catch(e){ appendMessage('NGI (calc)','Error evaluating expression (sim)'); } });
+
+// keyboard send
+inputEl.addEventListener('keydown',(e)=>{ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendBtn.click(); } });
+
+// initialize
+appendMessage('NGI','Welcome to NGI merged prototype. System prompt is active. This HTML is safe to host on static HTML sites. Mark brain-reading features research-only.'); appendLog('NGI merged UI loaded');
+
+/*
+  Backend endpoints you should implement (server-side):
+  - POST /api/chat         {session_id, system, input, style, memory_ids} -> {text, tokens, sources}
+  - POST /api/stream       SSE or WebSocket streaming tokens
+  - POST /api/embeddings   file/text -> {indexed:true, entries}
+  - POST /api/vector_query {q, top_k} -> {hits:[{id,score,doc}]}
+  - POST /api/moderation   {text} -> {safe, categories}
+  - GET  /api/ping         health check
+  - POST /api/tool/execute secure sandbox for plugins
+
+  Notes:
+  - Keep research workspace isolated and labelled. For brain-reading you must follow IRB / clinical validation and do not present unvalidated results.
+  - This file is intentionally client-only and contains simulation stubs; wire to server to get production behavior.
+*/
+
+</script></body>
+      </html>
