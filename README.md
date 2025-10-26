@@ -1,0 +1,2 @@
+# ngi-
+natural god intelligence
